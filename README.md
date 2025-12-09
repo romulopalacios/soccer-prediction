@@ -24,8 +24,6 @@ Una aplicación web moderna que predice resultados de partidos de fútbol utiliz
 
 ![Soccer Predictor Lite Demo](./demo-screenshot.png)
 
-> **Nota:** Agrega una captura de pantalla de tu aplicación funcionando en `demo-screenshot.png` en la raíz del proyecto.
-
 ---
 
 ## ✨ Características
@@ -247,30 +245,6 @@ soccer-prediction/
 rm -rf node_modules package-lock.json
 npm install
 npm run dev
-```
-
----
-
-## 🚀 Deploy
-
-### Vercel (Recomendado)
-```bash
-npm install -g vercel
-vercel
-```
-No olvides agregar las variables de entorno en el panel de Vercel.
-
-### Netlify
-```bash
-npm run build
-# Sube la carpeta dist/
-```
-
-### GitHub Pages
-```bash
-# Actualiza vite.config.ts con base: '/tu-repo/'
-npm run build
-# Sube dist/ a gh-pages branch
 ```
 
 ---
