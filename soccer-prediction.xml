@@ -1,0 +1,469 @@
+<changes>
+  <change>
+    <file>metadata.json</file>
+    <description>Metadata for the Soccer Predictor Lite application</description>
+    <content><![CDATA[{
+  "name": "Soccer Predictor Lite",
+  "description": "An AI-powered soccer match prediction engine that simulates data science analysis to forecast match outcomes."
+}]]></content>
+  </change>
+  <change>
+    <file>index.html</file>
+    <description>Entry point HTML with Tailwind CSS</description>
+    <content><![CDATA[<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Soccer Predictor Lite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      .grass-pattern {
+        background-color: #064e3b;
+        background-image: radial-gradient(#065f46 1px, transparent 1px);
+        background-size: 20px 20px;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-900 text-slate-50 antialiased selection:bg-emerald-500 selection:text-white">
+    <div id="root"></div>
+  </body>
+</html>]]></content>
+  </change>
+  <change>
+    <file>types.ts</file>
+    <description>TypeScript definitions for prediction data</description>
+    <content><![CDATA[export interface PredictionData {
+  homeTeam: string;
+  awayTeam: string;
+  homeScore: number;
+  awayScore: number;
+  winner: 'Home' | 'Away' | 'Draw';
+  confidence: number;
+  homeWinProbability: number;
+  awayWinProbability: number;
+  drawProbability: number;
+  analysis: string;
+  keyFactors: string[];
+}
+]]></content>
+  </change>
+  <change>
+    <file>services/geminiService.ts</file>
+    <description>Service to interact with Gemini API for match predictions</description>
+    <content><![CDATA[import { GoogleGenAI, Type, Schema } from "@google/genai";
+import { PredictionData } from "../types";
+
+const apiKey = process.env.API_KEY;
+
+if (!apiKey) {
+  console.error("API_KEY is missing from environment variables.");
+}
+
+const ai = new GoogleGenAI({ apiKey: apiKey || "dummy-key" });
+
+const predictionSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    homeScore: { type: Type.INTEGER, description: "Predicted score for the home team" },
+    awayScore: { type: Type.INTEGER, description: "Predicted score for the away team" },
+    winner: { type: Type.STRING, description: "The predicted winner: 'Home', 'Away', or 'Draw'" },
+    confidence: { type: Type.INTEGER, description: "Confidence score of the prediction from 0 to 100" },
+    homeWinProbability: { type: Type.INTEGER, description: "Percentage probability of home team winning (0-100)" },
+    awayWinProbability: { type: Type.INTEGER, description: "Percentage probability of away team winning (0-100)" },
+    drawProbability: { type: Type.INTEGER, description: "Percentage probability of a draw (0-100)" },
+    analysis: { type: Type.STRING, description: "A concise data-driven analysis of why this outcome is predicted, mentioning form or historical strength." },
+    keyFactors: { 
+      type: Type.ARRAY, 
+      items: { type: Type.STRING }, 
+      description: "List of 3-4 key tactical or statistical factors influencing the result." 
+    },
+  },
+  required: [
+    "homeScore", 
+    "awayScore", 
+    "winner", 
+    "confidence", 
+    "homeWinProbability", 
+    "awayWinProbability", 
+    "drawProbability", 
+    "analysis", 
+    "keyFactors"
+  ],
+};
+
+export const getMatchPrediction = async (homeTeam: string, awayTeam: string): Promise<PredictionData> => {
+  try {
+    const prompt = `Act as a professional soccer data analyst. Predict the outcome of a match between ${homeTeam} (Home) and ${awayTeam} (Away). 
+    Use your knowledge of these teams' historical strength, typical performance, and general soccer statistics to simulate a prediction. 
+    Provide a realistic scoreline, probabilities, and tactical analysis.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: predictionSchema,
+        thinkingConfig: { thinkingBudget: 0 } // Flash model, disable thinking for speed
+      },
+    });
+
+    if (response.text) {
+      const data = JSON.parse(response.text);
+      return {
+        ...data,
+        homeTeam,
+        awayTeam,
+      };
+    }
+    
+    throw new Error("No data returned from AI");
+
+  } catch (error) {
+    console.error("Prediction Error:", error);
+    // Fallback for demo purposes if API fails or key is invalid
+    return {
+      homeTeam,
+      awayTeam,
+      homeScore: 0,
+      awayScore: 0,
+      winner: 'Draw',
+      confidence: 0,
+      homeWinProbability: 33,
+      awayWinProbability: 33,
+      drawProbability: 34,
+      analysis: "Unable to generate prediction. Please check your API key or try again.",
+      keyFactors: ["API Error", "Check Connectivity"],
+    };
+  }
+};
+]]></content>
+  </change>
+  <change>
+    <file>components/TeamForm.tsx</file>
+    <description>Form component for entering team names</description>
+    <content><![CDATA[import React, { useState } from 'react';
+import { Loader2, Trophy } from 'lucide-react';
+
+interface TeamFormProps {
+  onSubmit: (home: string, away: string) => void;
+  isLoading: boolean;
+}
+
+export const TeamForm: React.FC<TeamFormProps> = ({ onSubmit, isLoading }) => {
+  const [homeTeam, setHomeTeam] = useState('');
+  const [awayTeam, setAwayTeam] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (homeTeam.trim() && awayTeam.trim()) {
+      onSubmit(homeTeam, awayTeam);
+    }
+  };
+
+  return (
+    <div className="w-full max-w-md mx-auto bg-slate-800 rounded-xl shadow-2xl overflow-hidden border border-slate-700">
+      <div className="bg-emerald-600 p-4 flex items-center justify-center space-x-2">
+        <Trophy className="text-white w-6 h-6" />
+        <h2 className="text-white font-bold text-lg tracking-wide">MATCH SETUP</h2>
+      </div>
+      
+      <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <div className="space-y-4">
+          <div className="relative">
+            <label htmlFor="homeTeam" className="block text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-1">
+              Home Team
+            </label>
+            <input
+              id="homeTeam"
+              type="text"
+              value={homeTeam}
+              onChange={(e) => setHomeTeam(e.target.value)}
+              placeholder="e.g. Real Madrid"
+              className="w-full bg-slate-900 text-white placeholder-slate-500 border border-slate-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              required
+            />
+          </div>
+
+          <div className="flex items-center justify-center">
+            <span className="text-slate-500 font-bold text-sm bg-slate-900 px-3 py-1 rounded-full border border-slate-700">VS</span>
+          </div>
+
+          <div className="relative">
+            <label htmlFor="awayTeam" className="block text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-1">
+              Away Team
+            </label>
+            <input
+              id="awayTeam"
+              type="text"
+              value={awayTeam}
+              onChange={(e) => setAwayTeam(e.target.value)}
+              placeholder="e.g. Barcelona"
+              className="w-full bg-slate-900 text-white placeholder-slate-500 border border-slate-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              required
+            />
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          disabled={isLoading || !homeTeam || !awayTeam}
+          className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-bold py-3.5 px-4 rounded-lg transition-all transform active:scale-[0.98] shadow-lg shadow-emerald-900/20 flex items-center justify-center space-x-2"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="animate-spin w-5 h-5" />
+              <span>Running Simulation...</span>
+            </>
+          ) : (
+            <span>Predict Match</span>
+          )}
+        </button>
+      </form>
+    </div>
+  );
+};
+]]></content>
+  </change>
+  <change>
+    <file>components/PredictionDisplay.tsx</file>
+    <description>Component to display prediction results</description>
+    <content><![CDATA[import React from 'react';
+import { PredictionData } from '../types';
+import { TrendingUp, Activity, CheckCircle2, AlertCircle } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+
+interface PredictionDisplayProps {
+  data: PredictionData;
+  onReset: () => void;
+}
+
+export const PredictionDisplay: React.FC<PredictionDisplayProps> = ({ data, onReset }) => {
+  const chartData = [
+    { name: data.homeTeam, value: data.homeWinProbability, color: '#10b981' }, // Emerald 500
+    { name: 'Draw', value: data.drawProbability, color: '#64748b' }, // Slate 500
+    { name: data.awayTeam, value: data.awayWinProbability, color: '#3b82f6' }, // Blue 500
+  ];
+
+  return (
+    <div className="w-full max-w-4xl mx-auto space-y-6 animate-fade-in-up">
+      
+      {/* Scoreboard Card */}
+      <div className="bg-slate-800 rounded-2xl p-6 shadow-2xl border border-slate-700 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-blue-500 to-emerald-500"></div>
+        
+        <div className="flex flex-col md:flex-row items-center justify-between gap-8 md:gap-4 text-center">
+          
+          <div className="flex-1 space-y-2">
+            <h3 className="text-xl md:text-2xl font-bold text-white tracking-tight">{data.homeTeam}</h3>
+            <span className="text-xs font-semibold text-emerald-400 tracking-wider uppercase">Home</span>
+          </div>
+
+          <div className="flex flex-col items-center justify-center px-8 py-4 bg-slate-900 rounded-xl border border-slate-700 shadow-inner">
+            <div className="text-5xl font-black text-white tracking-widest font-mono">
+              {data.homeScore} - {data.awayScore}
+            </div>
+            <div className="mt-2 text-xs font-medium text-slate-400 flex items-center gap-1">
+              <Activity className="w-3 h-3 text-emerald-500" />
+              <span>AI Confidence: {data.confidence}%</span>
+            </div>
+          </div>
+
+          <div className="flex-1 space-y-2">
+            <h3 className="text-xl md:text-2xl font-bold text-white tracking-tight">{data.awayTeam}</h3>
+            <span className="text-xs font-semibold text-blue-400 tracking-wider uppercase">Away</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        {/* Probabilities Chart */}
+        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-xl">
+          <div className="flex items-center space-x-2 mb-4">
+            <TrendingUp className="text-emerald-500 w-5 h-5" />
+            <h3 className="font-bold text-white">Win Probability</h3>
+          </div>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                  stroke="none"
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#fff' }}
+                  itemStyle={{ color: '#fff' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex justify-around mt-4 text-xs font-medium text-slate-400">
+            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> {data.homeTeam} ({data.homeWinProbability}%)</div>
+            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-slate-500"></div> Draw ({data.drawProbability}%)</div>
+            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500"></div> {data.awayTeam} ({data.awayWinProbability}%)</div>
+          </div>
+        </div>
+
+        {/* Analysis & Factors */}
+        <div className="space-y-6">
+          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-xl">
+            <h3 className="font-bold text-white mb-3 flex items-center gap-2">
+              <AlertCircle className="text-emerald-500 w-5 h-5" /> Match Analysis
+            </h3>
+            <p className="text-slate-300 text-sm leading-relaxed">
+              {data.analysis}
+            </p>
+          </div>
+
+          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-xl">
+            <h3 className="font-bold text-white mb-3 flex items-center gap-2">
+              <CheckCircle2 className="text-emerald-500 w-5 h-5" /> Key Factors
+            </h3>
+            <ul className="space-y-2">
+              {data.keyFactors.map((factor, idx) => (
+                <li key={idx} className="flex items-start gap-2 text-sm text-slate-300">
+                  <span className="block w-1.5 h-1.5 mt-1.5 rounded-full bg-emerald-500 flex-shrink-0"></span>
+                  {factor}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-center pt-4">
+        <button
+          onClick={onReset}
+          className="text-slate-400 hover:text-white hover:underline decoration-emerald-500 underline-offset-4 transition-all text-sm font-medium"
+        >
+          Predict Another Match
+        </button>
+      </div>
+    </div>
+  );
+};
+]]></content>
+  </change>
+  <change>
+    <file>App.tsx</file>
+    <description>Main application component</description>
+    <content><![CDATA[import React, { useState } from 'react';
+import { TeamForm } from './components/TeamForm';
+import { PredictionDisplay } from './components/PredictionDisplay';
+import { getMatchPrediction } from './services/geminiService';
+import { PredictionData } from './types';
+import { LayoutGrid } from 'lucide-react';
+
+const App: React.FC = () => {
+  const [prediction, setPrediction] = useState<PredictionData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handlePrediction = async (home: string, away: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getMatchPrediction(home, away);
+      setPrediction(result);
+    } catch (err) {
+      setError("Failed to generate prediction. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const reset = () => {
+    setPrediction(null);
+    setError(null);
+  };
+
+  return (
+    <div className="min-h-screen grass-pattern flex flex-col">
+      {/* Header */}
+      <header className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="bg-emerald-500 p-2 rounded-lg">
+              <LayoutGrid className="text-slate-900 w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white tracking-tight leading-none">
+                Soccer<span className="text-emerald-500">Predictor</span>
+              </h1>
+              <p className="text-[10px] text-slate-400 font-medium tracking-wide">AI-POWERED ANALYTICS</p>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-grow container mx-auto px-4 py-8 md:py-12 flex flex-col items-center justify-start">
+        
+        {error && (
+          <div className="w-full max-w-md bg-red-500/10 border border-red-500/50 text-red-400 p-4 rounded-lg mb-8 text-center text-sm font-medium animate-pulse">
+            {error}
+          </div>
+        )}
+
+        {!prediction ? (
+          <div className="w-full flex flex-col items-center animate-in fade-in zoom-in duration-500">
+            <div className="text-center mb-8 max-w-lg">
+              <h2 className="text-3xl font-bold text-white mb-3">Predict the Beautiful Game</h2>
+              <p className="text-slate-400">
+                Enter two teams below. Our Gemini 2.5 Flash model will analyze historical data, form, and tactical matchups to simulate a result.
+              </p>
+            </div>
+            <TeamForm onSubmit={handlePrediction} isLoading={loading} />
+          </div>
+        ) : (
+          <PredictionDisplay data={prediction} onReset={reset} />
+        )}
+      </main>
+
+      {/* Footer */}
+      <footer className="py-6 text-center text-slate-600 text-xs font-medium border-t border-slate-800/50 bg-slate-900/50">
+        <p>&copy; {new Date().getFullYear()} Soccer Predictor Lite. Powered by Google Gemini.</p>
+      </footer>
+    </div>
+  );
+};
+
+export default App;
+]]></content>
+  </change>
+  <change>
+    <file>index.tsx</file>
+    <description>React DOM entry point</description>
+    <content><![CDATA[import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error("Could not find root element to mount to");
+}
+
+const root = ReactDOM.createRoot(rootElement);
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+]]></content>
+  </change>
+</changes>
