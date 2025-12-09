@@ -1,14 +1,24 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { PredictionRequest, PredictionResponse } from '../types/prediction';
 
+// Load Gemini API Key from environment variables
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
+// Validate API Key presence at module load time
 if (!API_KEY) {
   throw new Error('VITE_GEMINI_API_KEY is not defined in environment variables');
 }
 
+// Initialize Google Generative AI client
 const genAI = new GoogleGenerativeAI(API_KEY);
 
+/**
+ * Predicts the outcome of a soccer match using Google Gemini AI
+ * 
+ * @param request - Contains home team and away team names (with optional logos)
+ * @returns Promise resolving to detailed prediction with score, probabilities, and analysis
+ * @throws Error if API call fails or response is invalid
+ */
 export async function predictMatch(request: PredictionRequest): Promise<PredictionResponse> {
   try {
     const model = genAI.getGenerativeModel({
@@ -47,14 +57,15 @@ Las probabilidades deben sumar 100.
 Proporciona exactamente 3 factores clave.
     `;
 
+    // Generate prediction using Gemini AI
     const result = await model.generateContent(prompt);
     const response = result.response;
     let text = response.text();
     
-    // Limpiar la respuesta para asegurar que es JSON válido
+    // Clean the response to ensure valid JSON
     text = text.trim();
     
-    // Remover markdown code blocks si existen
+    // Remove markdown code blocks if present (Gemini sometimes wraps JSON in ```json blocks)
     if (text.startsWith('```json')) {
       text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '');
     } else if (text.startsWith('```')) {
@@ -63,19 +74,20 @@ Proporciona exactamente 3 factores clave.
     
     text = text.trim();
     
+    // Parse the JSON response
     const prediction: PredictionResponse = JSON.parse(text);
     
-    // Validaciones
+    // Validate response structure to ensure data integrity
     if (!prediction.predictedScore || typeof prediction.predictedScore.home !== 'number' || typeof prediction.predictedScore.away !== 'number') {
-      throw new Error('Respuesta inválida: falta predictedScore');
+      throw new Error('Invalid response: missing or invalid predictedScore');
     }
     
     if (!['home', 'away', 'draw'].includes(prediction.winner)) {
-      throw new Error('Respuesta inválida: winner debe ser home, away o draw');
+      throw new Error('Invalid response: winner must be home, away or draw');
     }
     
     if (!prediction.probabilities || !prediction.probabilities.home || !prediction.probabilities.draw || !prediction.probabilities.away) {
-      throw new Error('Respuesta inválida: faltan probabilities');
+      throw new Error('Invalid response: missing probabilities');
     }
     
     if (!['low', 'medium', 'high'].includes(prediction.confidenceLevel)) {

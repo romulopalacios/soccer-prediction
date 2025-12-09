@@ -1,23 +1,38 @@
+/**
+ * Team data structure returned from Football API
+ */
 export interface Team {
   id: number;
   name: string;
-  logo: string;
+  logo: string;      // URL to team logo image
   country: string;
 }
 
+/**
+ * Response wrapper for team search results
+ */
 export interface TeamSearchResponse {
   teams: Team[];
 }
 
-// Cache para evitar llamadas repetidas
+// In-memory cache to avoid redundant API calls (30 min TTL)
 const teamCache = new Map<string, Team[]>();
-const CACHE_DURATION = 1000 * 60 * 30; // 30 minutos
+const CACHE_DURATION = 1000 * 60 * 30; // 30 minutes
 
-// API gratuita de fútbol - API-FOOTBALL en RapidAPI
-// Alternativa: api-football.com (necesitas registrarte para obtener una key gratuita)
+// Football API configuration
+// Free tier: 100 requests/day at api-football.com
+// If no API key is provided, fallback to local team data
 const API_KEY = import.meta.env.VITE_FOOTBALL_API_KEY || '';
 const BASE_URL = 'https://v3.football.api-sports.io';
 
+/**
+ * Searches for football teams by name using Football API
+ * Falls back to local data if API key is not configured
+ * Implements 30-minute caching to optimize API usage
+ * 
+ * @param query - Search term (minimum 2 characters)
+ * @returns Promise resolving to array of matching teams
+ */
 export async function searchTeams(query: string): Promise<Team[]> {
   if (!query || query.trim().length < 2) {
     return [];
@@ -61,18 +76,25 @@ export async function searchTeams(query: string): Promise<Team[]> {
       country: item.team.country || 'Unknown',
     })) || [];
 
-    // Guardar en cache
+    // Store in cache with automatic expiration after 30 minutes
     teamCache.set(cacheKey, teams);
     setTimeout(() => teamCache.delete(cacheKey), CACHE_DURATION);
 
     return teams;
   } catch (error) {
-    console.error('Error fetching teams:', error);
+    console.error('Error fetching teams from Football API:', error);
+    // Gracefully degrade to local fallback data
     return getLocalTeamsFallback(query);
   }
 }
 
-// Fallback a datos locales si la API no está disponible
+/**
+ * Fallback function that provides local team data when API is unavailable
+ * Returns 12 popular teams with emoji logos as placeholders
+ * 
+ * @param query - Search term to filter local teams
+ * @returns Filtered array of local teams matching the query
+ */
 function getLocalTeamsFallback(query: string): Team[] {
   const localTeams = [
     { id: 1, name: 'Real Madrid', logo: '⚪', country: '🇪🇸 España' },

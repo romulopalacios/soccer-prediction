@@ -3,16 +3,28 @@ import type { Team } from '../services/footballApi';
 import { searchTeams } from '../services/footballApi';
 import './Combobox.css';
 
+/**
+ * Props interface for the Combobox component
+ */
 interface ComboboxProps {
   id: string;
   label: string;
   placeholder: string;
   value: string;
-  onChange: (value: string, logo?: string) => void;
+  onChange: (value: string, logo?: string) => void;  // Callback with team name and optional logo URL
   disabled?: boolean;
   required?: boolean;
 }
 
+/**
+ * WAI-ARIA compliant Combobox component with autocomplete functionality
+ * Features:
+ * - Real-time team search via Football API
+ * - Keyboard navigation (Arrow Up/Down, Enter, Escape)
+ * - Debounced search (300ms) to optimize API calls
+ * - Loading states and error handling
+ * - Accessibility: ARIA attributes for screen readers
+ */
 export const Combobox: React.FC<ComboboxProps> = ({
   id,
   label,
@@ -22,10 +34,13 @@ export const Combobox: React.FC<ComboboxProps> = ({
   disabled = false,
   required = false,
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [isLoading, setIsLoading] = useState(false);
+  // State management
+  const [isOpen, setIsOpen] = useState(false);           // Dropdown visibility
+  const [teams, setTeams] = useState<Team[]>([]);        // Search results
+  const [selectedIndex, setSelectedIndex] = useState(-1); // Keyboard navigation index
+  const [isLoading, setIsLoading] = useState(false);     // Loading indicator
+  
+  // Refs for DOM elements
   const inputRef = useRef<HTMLInputElement>(null);
   const listboxRef = useRef<HTMLUListElement>(null);
 
@@ -52,20 +67,36 @@ export const Combobox: React.FC<ComboboxProps> = ({
       setSelectedIndex(-1);
     };
 
+    // Debounce search requests by 300ms to avoid excessive API calls
     const debounceTimer = setTimeout(fetchTeams, 300);
     return () => clearTimeout(debounceTimer);
   }, [value]);
 
+  /**
+   * Handles input field changes
+   * Triggers the debounced search in useEffect
+   */
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value);
   };
 
+  /**
+   * Handles team selection from dropdown
+   * Passes both team name and logo URL to parent component
+   */
   const handleOptionClick = (team: Team) => {
     onChange(team.name, team.logo);
     setIsOpen(false);
     inputRef.current?.blur();
   };
 
+  /**
+   * Keyboard navigation handler
+   * - ArrowDown: Move to next option
+   * - ArrowUp: Move to previous option
+   * - Enter: Select current option
+   * - Escape: Close dropdown
+   */
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!isOpen) return;
 
