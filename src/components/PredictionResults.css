@@ -39,6 +39,17 @@
 .team-score {
   flex: 1;
   max-width: 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.team-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
 }
 
 .team-name {
@@ -200,6 +211,7 @@
 }
 
 .factors-section {
+  /* Styles inherited from result-card */
 }
 
 .factors-list {

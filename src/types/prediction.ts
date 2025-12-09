@@ -1,6 +1,8 @@
 export interface PredictionRequest {
   homeTeam: string;
   awayTeam: string;
+  homeTeamLogo?: string;
+  awayTeamLogo?: string;
 }
 
 export interface PredictionResponse {

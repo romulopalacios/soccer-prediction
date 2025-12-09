@@ -52,6 +52,8 @@ function App() {
             prediction={prediction}
             homeTeam={lastRequest?.homeTeam || ''}
             awayTeam={lastRequest?.awayTeam || ''}
+            homeTeamLogo={lastRequest?.homeTeamLogo}
+            awayTeamLogo={lastRequest?.awayTeamLogo}
             onReset={handleReset}
           />
         )}

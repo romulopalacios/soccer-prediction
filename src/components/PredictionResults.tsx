@@ -7,6 +7,8 @@ interface PredictionResultsProps {
   prediction: PredictionResponse;
   homeTeam: string;
   awayTeam: string;
+  homeTeamLogo?: string;
+  awayTeamLogo?: string;
   onReset: () => void;
 }
 
@@ -14,6 +16,8 @@ export const PredictionResults: React.FC<PredictionResultsProps> = ({
   prediction,
   homeTeam,
   awayTeam,
+  homeTeamLogo,
+  awayTeamLogo,
   onReset,
 }) => {
   const chartData = [
@@ -42,6 +46,7 @@ export const PredictionResults: React.FC<PredictionResultsProps> = ({
           
           <div className="score-display">
             <div className="team-score">
+              {homeTeamLogo && <img src={homeTeamLogo} alt={homeTeam} className="team-logo" />}
               <div className="team-name">{homeTeam}</div>
               <div className="score-number">{prediction.predictedScore.home}</div>
             </div>
@@ -49,6 +54,7 @@ export const PredictionResults: React.FC<PredictionResultsProps> = ({
             <div className="score-separator">-</div>
             
             <div className="team-score">
+              {awayTeamLogo && <img src={awayTeamLogo} alt={awayTeam} className="team-logo" />}
               <div className="team-name">{awayTeam}</div>
               <div className="score-number">{prediction.predictedScore.away}</div>
             </div>

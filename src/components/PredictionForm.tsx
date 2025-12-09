@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { PredictionRequest } from '../types/prediction';
+import { Combobox } from './Combobox';
 import './PredictionForm.css';
 
 interface PredictionFormProps {
@@ -15,6 +16,18 @@ export const PredictionForm: React.FC<PredictionFormProps> = ({
 }) => {
   const [homeTeam, setHomeTeam] = useState('');
   const [awayTeam, setAwayTeam] = useState('');
+  const [homeTeamLogo, setHomeTeamLogo] = useState('');
+  const [awayTeamLogo, setAwayTeamLogo] = useState('');
+
+  const handleHomeTeamChange = (value: string, logo?: string) => {
+    setHomeTeam(value);
+    if (logo) setHomeTeamLogo(logo);
+  };
+
+  const handleAwayTeamChange = (value: string, logo?: string) => {
+    setAwayTeam(value);
+    if (logo) setAwayTeamLogo(logo);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,6 +39,8 @@ export const PredictionForm: React.FC<PredictionFormProps> = ({
     await onSubmit({
       homeTeam: homeTeam.trim(),
       awayTeam: awayTeam.trim(),
+      homeTeamLogo: homeTeamLogo || undefined,
+      awayTeamLogo: awayTeamLogo || undefined,
     });
   };
 
@@ -34,16 +49,12 @@ export const PredictionForm: React.FC<PredictionFormProps> = ({
       <h2 className="form-title">⚽ Predice el Resultado</h2>
       
       <div className="form-group">
-        <label htmlFor="homeTeam" className="form-label">
-          Equipo Local
-        </label>
-        <input
+        <Combobox
           id="homeTeam"
-          type="text"
-          className="form-input"
-          placeholder="ej. Real Madrid"
+          label="Equipo Local"
+          placeholder="Escribe para buscar... ej. Real Madrid"
           value={homeTeam}
-          onChange={(e) => setHomeTeam(e.target.value)}
+          onChange={handleHomeTeamChange}
           disabled={isLoading}
           required
         />
@@ -52,16 +63,12 @@ export const PredictionForm: React.FC<PredictionFormProps> = ({
       <div className="versus-text">VS</div>
 
       <div className="form-group">
-        <label htmlFor="awayTeam" className="form-label">
-          Equipo Visitante
-        </label>
-        <input
+        <Combobox
           id="awayTeam"
-          type="text"
-          className="form-input"
-          placeholder="ej. Barcelona"
+          label="Equipo Visitante"
+          placeholder="Escribe para buscar... ej. Barcelona"
           value={awayTeam}
-          onChange={(e) => setAwayTeam(e.target.value)}
+          onChange={handleAwayTeamChange}
           disabled={isLoading}
           required
         />
